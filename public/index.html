@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>📁 File Share Site</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+
+  <style>
+    body {
+      background: linear-gradient(to bottom right, #e3f2fd, #f5f5f5);
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      min-height: 100vh;
+      position: relative;
+    }
+
+    h1 {
+      text-align: center;
+      padding: 1.5rem 0;
+      margin-bottom: 2rem;
+      background-color: #1976d2;
+      color: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      border-radius: 0.5rem;
+      font-weight: 600;
+    }
+
+    .upload-card, .file-list-card {
+      padding: 1.75rem;
+      border-radius: 1rem;
+      background-color: #ffffff;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .upload-card:hover, .file-list-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.12);
+    }
+
+    #fileTable tbody:empty::before {
+      content: "ยังไม่มีไฟล์ในระบบ";
+      display: block;
+      text-align: center;
+      padding: 1rem;
+      color: #999;
+      font-style: italic;
+    }
+
+    /* ปรับ input file และปุ่มให้น่าใช้ */
+    .input-group input[type="file"] {
+      border-radius: 0.5rem 0 0 0.5rem;
+      border-right: none;
+    }
+
+    .input-group button {
+      border-radius: 0 0.5rem 0.5rem 0;
+    }
+
+    /* ปุ่ม logout */
+    #logoutBtn {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+      border-radius: 0.5rem;
+      padding: 0.5rem 1rem;
+      font-weight: 500;
+    }
+
+    /* Responsive */
+    @media (max-width: 576px) {
+      .upload-card, .file-list-card {
+        padding: 1rem;
+      }
+      h1 { font-size: 1.5rem; }
+      #logoutBtn { padding: 0.4rem 0.8rem; font-size: 0.9rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container py-4">
+    <h1>📁 File Share Site</h1>
+    <div class="text-center mb-4">
+    <button id="logoutBtn" class="btn btn-outline-danger">
+        <i class="bi bi-box-arrow-right"></i> ออกจากระบบ
+    </button>
+    </div>
+
+    
+    <!-- Upload Section -->
+    <div class="upload-card mb-4 text-center">
+      <div class="input-group justify-content-center">
+        <input type="file" class="form-control w-auto" id="fileInput">
+        <button class="btn btn-primary" id="uploadBtn"><i class="bi bi-cloud-upload"></i> อัปโหลด</button>
+      </div>
+      <div class="progress mt-3" style="height: 20px; display:none;" id="uploadProgress">
+        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%" id="uploadProgressBar">
+            0%
+        </div>
+      </div>
+    </div>
+
+    <!-- File List Section -->
+    <div class="file-list-card">
+      <h3 class="mb-3"><i class="bi bi-folder2-open"></i> รายการไฟล์</h3>
+      <div class="table-responsive">
+        <table class="table table-striped table-hover" id="fileTable">
+          <thead class="table-light">
+            <tr>
+              <th>ชื่อไฟล์</th>
+              <th>ขนาดไฟล์</th>
+              <th>การจัดการ</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  document.getElementById("logoutBtn").addEventListener("click", () => {
+    window.location.href = "/logout";
+  });
+  </script>
+
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- Bootstrap JS Bundle (Popper included) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="script.js?v=3"></script>
+</body>
+</html>
