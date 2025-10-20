@@ -282,60 +282,53 @@ func deleteHandler(c *fiber.Ctx) error {
 	log.Println("\n--- [DEBUG] STARTING DELETE HANDLER ---")
 
 	rawFilename := c.Params("filename")
-	log.Printf("[DEBUG] 1. Received raw filename from URL: '%s'\n", rawFilename)
-
 	requestedFilename, err := url.QueryUnescape(rawFilename)
 	if err != nil {
-		log.Println("[DEBUG] ERROR: Failed to decode filename.")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid filename"})
 	}
-	log.Printf("[DEBUG] 2. Decoded filename: '%s'\n", requestedFilename)
+	log.Printf("[DEBUG] Decoded filename: '%s'\n", requestedFilename)
 
 	webfiles.mu.Lock()
-	defer webfiles.mu.Unlock()
+	defer webfiles.mu.Unlock() // Lock is acquired here
 
-	log.Println("[DEBUG] 3. Starting search in web files to find path for deletion...")
-	var fileToDelete *FileMeta
 	var fileIndex = -1
 	for i, f := range webfiles.Files {
-		log.Printf("[DEBUG]    - Comparing with web file: '%s'\n", f.Filename)
 		if f.Filename == requestedFilename {
-			log.Println("[DEBUG]    *** MATCH FOUND! ***")
-			fileToDelete = &webfiles.Files[i]
 			fileIndex = i
 			break
 		}
 	}
 
-	if fileToDelete == nil {
-		log.Printf("[DEBUG] 4. ERROR: No match found for '%s' in metadata webfiles.\n", requestedFilename)
-		log.Println("--- [DEBUG] ENDING DELETE HANDLER ---")
+	if fileIndex == -1 {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "File not found in metadata"})
 	}
-	log.Printf("[DEBUG] 4. Match found. File path to delete is: '%s'\n", fileToDelete.Path)
 
-	if err := os.Remove(fileToDelete.Path); err != nil {
-		log.Printf("[DEBUG] 5. WARNING: Could not delete file from disk: %v. Continuing to remove metadata.\n", err)
+	filePathToDelete := filepath.Join(uploadDir, requestedFilename)
+	if err := os.Remove(filePathToDelete); err != nil && !os.IsNotExist(err) {
+		log.Printf("[DEBUG] WARNING: Could not delete file from disk: %v\n", err)
 	} else {
-		log.Printf("[DEBUG] 5. Successfully deleted file from disk: '%s'\n", fileToDelete.Path)
+		log.Printf("[DEBUG] Successfully deleted file from disk: '%s'\n", filePathToDelete)
 	}
 
 	webfiles.Files = append(webfiles.Files[:fileIndex], webfiles.Files[fileIndex+1:]...)
-	log.Println("[DEBUG] 6. Removed file metadata from webfiles.")
+	log.Println("[DEBUG] Removed file metadata from webfiles slice.")
 
-	saveMetadata()
+	// --- [FIX] Call the UNLOCKED version here to avoid deadlock ---
+	if err := saveMetadataUnlocked(); err != nil {
+		log.Println("[DEBUG] ERROR: Failed to save metadata after deletion.")
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update metadata"})
+	}
 
 	log.Println("--- [DEBUG] ENDING DELETE HANDLER ---")
-	return c.JSON(fiber.Map{"status": "deleted", "filename": requestedFilename})
+	return c.JSON(webfiles.Files)
 }
 
 // --- Metadata Functions ---
 
-func saveMetadata() error {
-	webfiles.mu.Lock()
-	defer webfiles.mu.Unlock()
-
-	log.Println("[DEBUG] Saving metadata to file...")
+// saveMetadataUnlocked performs the save operation without handling mutex locks.
+// This should be called by functions that have already acquired the lock.
+func saveMetadataUnlocked() error {
+	log.Println("[DEBUG] Saving metadata to file (unlocked)...")
 
 	dataToSave := struct {
 		Files []FileMeta `json:"files"`
@@ -353,8 +346,35 @@ func saveMetadata() error {
 		return err
 	}
 	log.Println("[DEBUG] Metadata saved successfully.")
-
 	return nil
+}
+
+// --- Metadata Functions ---
+
+func saveMetadata() error {
+	webfiles.mu.Lock()
+	defer webfiles.mu.Unlock()
+
+	// log.Println("[DEBUG] Saving metadata to file...")
+
+	// dataToSave := struct {
+	// 	Files []FileMeta `json:"files"`
+	// }{
+	// 	Files: webfiles.Files,
+	// }
+
+	// data, err := json.MarshalIndent(dataToSave, "", "  ")
+	// if err != nil {
+	// 	log.Printf("[DEBUG] ERROR: Failed to marshal metadata to JSON: %v\n", err)
+	// 	return err
+	// }
+	// if err := os.WriteFile(metadataFile, data, 0644); err != nil {
+	// 	log.Printf("[DEBUG] ERROR: Failed to write metadata to file '%s': %v\n", metadataFile, err)
+	// 	return err
+	// }
+	// log.Println("[DEBUG] Metadata saved successfully.")
+
+	return saveMetadataUnlocked()
 }
 
 func loadMetadata() {
